@@ -21,7 +21,6 @@ export function RulesPanel({
 }) {
   return (
     <>
-      <h1 className="page-title" style={{ marginBottom: 4 }}>Rules &amp; Skills</h1>
       <p className="panel-hint" style={{ marginBottom: 24 }}>Provide domain-specific knowledge and workflows for the agent</p>
 
       <div className="rss-section-head">

@@ -232,7 +232,7 @@ function SubagentCard({ block, onOpen, awaitingApproval }: { block: ToolBlock; o
           : "done";
 
   return (
-    <div className={"subagent-card" + (awaitingApproval ? " needs-approval" : "")} onClick={() => onOpen?.(block.callId)} role="button" title="Open subagent">
+    <div className={"subagent-card" + (awaitingApproval ? " needs-approval" : "")} onClick={() => onOpen?.(block.callId)} role="button" tabIndex={0} title="Open subagent" onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen?.(block.callId); } }}>
       <div className="subagent-card-main">
         <span className="ticon"><Icon name="task" /></span>
         <span className="label">{i.description || subName || "Subagent"}</span>
@@ -337,7 +337,7 @@ function PlanCard({ block, onImplement }: { block: ToolBlock; onImplement?: (pat
 
   return (
     <div className="plan-card">
-      <div className="plan-header" onClick={toggleOpen}>
+      <div className="plan-header" role="button" tabIndex={0} aria-expanded={open} onClick={toggleOpen} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleOpen(); } }}>
         <span className={"tchev" + (open ? " open" : "")}>
           <Icon name="chevD" />
         </span>
@@ -515,9 +515,9 @@ function Diff({ diff }: { diff: string }) {
         })}
       </div>
       {needsExpand && (
-        <div className="diff-expand" onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}>
+        <button className="diff-expand" aria-label={expanded ? "Collapse diff" : "Expand diff"} aria-expanded={expanded} onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}>
           <Icon name="chevD" size={12} className={expanded ? "flip" : ""} />
-        </div>
+        </button>
       )}
     </>
   );
@@ -781,7 +781,7 @@ function ToolCardInner({ block, onImplement, onOpenSubagent, awaitingApproval }:
 
   return (
     <div className={"tool-card " + (isEdit ? "edit-card" : "compact-card") + (isShell ? " shell-card" : "")}>
-      <div className={"tool-card-header " + (isEdit ? "edit-header" : "compact") + (isShell ? " shell-header" : "")} onClick={onHeaderClick}>
+      <div className={"tool-card-header " + (isEdit ? "edit-header" : "compact") + (isShell ? " shell-header" : "")} role="button" tabIndex={0} aria-expanded={isEdit ? undefined : open} onClick={onHeaderClick} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onHeaderClick(); } }}>
         <div className="left">
           {!isEdit && (
             <span className={"tchev" + (open ? " open" : "")}>

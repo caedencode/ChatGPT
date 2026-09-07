@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) 2026 Pawan Osman <https://github.com/PawanOsman>
+ *
+ * This file is part of OpenCursor — AI coding agent chat inside VS Code.
+ * https://github.com/PawanOsman/OpenCursor
+ *
+ * Licensed under the MIT License. See LICENSE file in the project root.
+ */
+
+.msel-trigger {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 9px;
+  min-width: 0; max-width: 100%; min-height: 34px; padding: 7px 10px;
+  border: 1px solid var(--oc-border-strong); border-radius: 8px;
+  background: var(--oc-bg); color: var(--oc-fg); font: inherit; font-size: 12px;
+  cursor: pointer; transition: background 120ms, border-color 120ms;
+}
+.msel-trigger:hover { background: var(--oc-surface-hover); border-color: var(--oc-accent); }
+.msel-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.msel-trigger > svg { color: var(--oc-muted); }
+.msel-overlay {
+  position: fixed; inset: 0; z-index: 1000; padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: #0006; backdrop-filter: blur(3px);
+}
+.msel-dialog {
+  display: flex; flex-direction: column; width: 520px; max-width: 100%;
+  max-height: min(640px, calc(100dvh - 40px)); overflow: hidden;
+  border: 1px solid var(--oc-border-strong); border-radius: 14px;
+  background: var(--oc-bg); color: var(--oc-fg); box-shadow: var(--oc-shadow);
+  font-family: var(--oc-font); font-size: 13px; animation: msel-appear 140ms ease-out;
+}
+.msel-heading { display: flex; align-items: center; gap: 12px; padding: 20px 20px 14px; }
+.msel-heading-text { flex: 1; min-width: 0; }
+.msel-title { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
+.msel-description { margin: 5px 0 0; color: var(--oc-muted); font-size: 12px; line-height: 1.5; }
+.msel-close {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px;
+  color: var(--oc-muted); background: transparent; cursor: pointer;
+}
+.msel-close:hover { color: var(--oc-fg); background: var(--oc-surface-hover); border-color: var(--oc-border); }
+.msel-head { margin: 0 20px 14px; display: flex; align-items: center; gap: 9px; color: var(--oc-muted); }
+.msel-head .msel-search {
+  width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--oc-border-strong);
+  border-radius: 8px; color: var(--oc-fg); background: var(--oc-surface); font: inherit;
+}
+.msel-search::placeholder { color: var(--oc-muted); }
+.msel-search:focus { outline: 2px solid var(--oc-focus); outline-offset: 1px; }
+.msel-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px 14px; border-bottom: 1px solid var(--oc-border); }
+.msel-chip {
+  padding: 5px 9px; border: 1px solid var(--oc-border); border-radius: 6px;
+  background: transparent; color: var(--oc-muted); font: inherit; font-size: 11px; cursor: pointer;
+}
+.msel-chip:hover { color: var(--oc-fg); background: var(--oc-surface-hover); }
+.msel-chip.active { border-color: color-mix(in srgb, var(--oc-accent) 45%, var(--oc-border)); background: var(--oc-accent-soft); color: var(--oc-accent); }
+.msel-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px; }
+.msel-group { display: flex; justify-content: space-between; gap: 12px; padding: 14px 12px 7px; color: var(--oc-muted); font-size: 11px; font-weight: 600; }
+.msel-group span:last-child { font-weight: 400; font-variant-numeric: tabular-nums; }
+.msel-item {
+  display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px 12px;
+  border: 1px solid transparent; border-radius: 8px; text-align: left;
+  color: var(--oc-fg); background: transparent; font: inherit; cursor: pointer;
+}
+.msel-item:hover { background: var(--oc-surface-hover); }
+.msel-item.active { background: var(--oc-accent-soft); border-color: var(--oc-border); }
+.msel-item-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.msel-item-name { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.msel-item-sub { color: var(--oc-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msel-item-check { flex-shrink: 0; color: var(--oc-accent); }
+.msel-divider { height: 1px; background: var(--oc-border); margin: 8px 12px; }
+.msel-empty { display: grid; justify-items: center; gap: 8px; padding: 32px 16px; text-align: center; color: var(--oc-muted); line-height: 1.5; }
+.msel-empty strong { color: var(--oc-fg); font-weight: 500; }
+.msel-empty span { font-size: 12px; }
+.msel-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; border-top: 1px solid var(--oc-border); font-size: 11px; color: var(--oc-muted); }
+.msel-footer kbd { padding: 1px 4px; border: 1px solid var(--oc-border); border-radius: 3px; font-family: var(--oc-font); font-size: 10px; }
+@keyframes msel-appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 380px) {
+  .msel-overlay { padding: 10px; }
+  .msel-dialog { max-height: calc(100dvh - 20px); border-radius: 10px; }
+  .msel-heading { padding: 16px 14px 12px; }
+  .msel-head { margin: 0 14px 12px; }
+  .msel-filters { padding: 0 14px 12px; }
+  .msel-footer { padding: 10px 14px; }
+}

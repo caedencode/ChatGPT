@@ -51,7 +51,6 @@ export function McpPanel({
 
   return (
     <>
-      <h1 className="page-title">Tools &amp; MCPs</h1>
 
       <div className="section-label">MCP Servers</div>
       <p className="panel-hint">Connected Model Context Protocol servers and the tools they expose.</p>

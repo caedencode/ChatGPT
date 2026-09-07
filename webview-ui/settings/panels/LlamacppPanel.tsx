@@ -165,7 +165,6 @@ export function LlamacppPanel({
 
   return (
     <>
-      <h1 className="page-title">llama.cpp</h1>
 
       <div className="section-label">Runtime</div>
       <div className="row">

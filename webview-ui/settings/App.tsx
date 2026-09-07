@@ -59,25 +59,23 @@ interface EmbedModel {
   name: string;
 }
 
-// Ordered like Cursor's settings nav: General · Plan & Usage / Agents / Models
-// group · plugins-style group (Rules, MCPs, Hooks, Indexing) · misc.
-const NAV: { id: Section; label: string; icon: IconName; sep?: boolean }[] = [
-  { id: "general", label: "General", icon: "settings" },
-  { id: "providers", label: "Providers", icon: "globe", sep: true },
-  { id: "llamacpp", label: "llama.cpp", icon: "database" },
-  { id: "ollama", label: "Ollama", icon: "database" },
-  { id: "usage", label: "Usage & Quota", icon: "history", sep: true },
-  { id: "agents", label: "Agents", icon: "agent" },
-  { id: "models", label: "Models", icon: "model" },
-  { id: "behavior", label: "Behavior", icon: "tools" },
-  { id: "personas", label: "Personas", icon: "bot", sep: true },
-  { id: "rules", label: "Rules & Skills", icon: "ruler" },
-  { id: "subagents", label: "Subagents & Teams", icon: "agent" },
-  { id: "mcp", label: "Tools & MCPs", icon: "task" },
-  { id: "hooks", label: "Hooks", icon: "infinity" },
-  { id: "indexing", label: "Indexing & Docs", icon: "database" },
-  { id: "advanced", label: "Advanced", icon: "fileCode", sep: true },
-  { id: "about", label: "About", icon: "book" },
+const NAV: { id: Section; label: string; icon: IconName; group: string; description: string }[] = [
+  { id: "general", label: "General", icon: "settings", group: "Workspace", description: "Make OpenCursor feel at home in your workspace." },
+  { id: "agents", label: "Agents", icon: "agent", group: "Workspace", description: "Fine-tune your conversations, agent runs, and context." },
+  { id: "behavior", label: "Behavior", icon: "tools", group: "Workspace", description: "Choose what your agent can access and when it asks for approval." },
+  { id: "providers", label: "Providers", icon: "globe", group: "Models & access", description: "Connect your preferred providers and manage your accounts." },
+  { id: "models", label: "Models", icon: "model", group: "Models & access", description: "Build a model collection that fits the way you work." },
+  { id: "usage", label: "Usage & Quota", icon: "history", group: "Models & access", description: "Understand your token usage and keep an eye on account limits." },
+  { id: "llamacpp", label: "llama.cpp", icon: "database", group: "Models & access", description: "Run GGUF models on your machine with llama.cpp." },
+  { id: "ollama", label: "Ollama", icon: "database", group: "Models & access", description: "Download, manage, and use local models with Ollama." },
+  { id: "personas", label: "Personas", icon: "bot", group: "Customize", description: "Give your agent the right perspective for each kind of work." },
+  { id: "rules", label: "Rules & Skills", icon: "ruler", group: "Customize", description: "Give your agent reusable instructions and workspace knowledge." },
+  { id: "subagents", label: "Subagents & Teams", icon: "users", group: "Customize", description: "Create focused specialists and organize them into teams." },
+  { id: "mcp", label: "Tools & MCPs", icon: "task", group: "Customize", description: "Connect tools and services to expand what your agent can do." },
+  { id: "hooks", label: "Hooks", icon: "infinity", group: "Customize", description: "Run your own commands at key moments in the agent workflow." },
+  { id: "indexing", label: "Indexing & Docs", icon: "fileSearch", group: "Customize", description: "Keep your codebase and documentation ready for retrieval." },
+  { id: "advanced", label: "Advanced", icon: "fileCode", group: "Extension", description: "Add custom instructions to guide your agent across conversations." },
+  { id: "about", label: "About", icon: "book", group: "Extension", description: "An open source coding companion, built for your workspace." },
 ];
 
 /** Built-in tool hard timeouts (seconds). Keep in sync with src/agent/tools/shared.ts. */
@@ -125,7 +123,7 @@ const SECTION_KEYWORDS: Partial<Record<Section, string>> = {
   about: "about version license author github repository open source mit pawan osman",
 };
 
-/** Cursor-style rounded group card wrapping settings rows. */
+/** A consistent surface for related settings. */
 function Group({ children }: { children: React.ReactNode }) {
   return <div className="settings-group">{children}</div>;
 }
@@ -363,48 +361,45 @@ function UsagePanel({
   const max = Math.max(1, ...rows.map(([, u]) => u.promptTokens + u.completionTokens));
   return (
     <>
-      <h1 className="page-title">Usage &amp; Quota</h1>
 
-      <div className="section-label">Token Usage</div>
-      <div className="index-card">
-        <div className="index-card-title">Total</div>
-        <p className="row-desc">
-          {fmtTokens(totals.p)} input · {fmtTokens(totals.c)} output tokens across {totals.r} request attempt{totals.r === 1 ? "" : "s"} with reported usage. Includes billed retries. Tracked locally on this machine.
-        </p>
+      <div className="usage-overview" aria-label="Recorded usage totals">
+        <div className="usage-metric"><span>Input tokens</span><strong>{fmtTokens(totals.p)}</strong><small>Sent to your models</small></div>
+        <div className="usage-metric"><span>Output tokens</span><strong>{fmtTokens(totals.c)}</strong><small>Generated by your models</small></div>
+        <div className="usage-metric"><span>Request attempts</span><strong>{fmtTokens(totals.r)}</strong><small>With reported usage</small></div>
+      </div>
+      <div className="index-card usage-breakdown">
+        <div className="usage-card-head">
+          <div><h2 className="index-card-title">Usage by model</h2><p className="row-desc">Tracked on this machine. Includes billed retries.</p></div>
+          <div className="usage-actions">
+            <button className="btn-secondary" disabled={!!pending} onClick={() => runAction("refresh")}>
+              <Icon name="reset" /> {pending === "refresh" ? "Refreshing…" : "Refresh"}
+            </button>
+            <button className="btn-secondary danger" disabled={rows.length === 0 || !!pending} onClick={() => runAction("reset")}>
+              <Icon name="trash" /> {pending === "reset" ? "Awaiting reset…" : "Reset Usage"}
+            </button>
+          </div>
+        </div>
         {rows.length === 0 ? (
-          <div className="empty-card" style={{ marginTop: 12 }}>No usage recorded yet. Start chatting to see per-model token usage.</div>
+          <div className="empty-card usage-empty"><Icon name="history" size={24} /><strong>No usage recorded yet</strong><span>Start chatting to see per-model token usage.</span></div>
         ) : (
-          <div style={{ marginTop: 14 }}>
+          <div className="usage-model-list">
             {rows.map(([model, u]) => {
               const total = u.promptTokens + u.completionTokens;
               return (
-                <div key={model} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, gap: 12 }}>
-                    <span style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{model}</span>
-                    <span className="row-desc" style={{ flex: "0 0 auto" }}>
-                      {fmtTokens(u.promptTokens)} in · {fmtTokens(u.completionTokens)} out · {u.requests} req
-                    </span>
+                <div key={model} className="usage-model">
+                  <div className="usage-model-head">
+                    <span className="usage-model-name" title={model}>{model}</span>
+                    <span className="usage-model-total">{fmtTokens(total)} <span>tokens</span></span>
                   </div>
-                  <div className="row-desc" style={{ marginBottom: 4 }}><CacheUsage usage={u} /></div>
+                  <div className="usage-model-meta">{fmtTokens(u.promptTokens)} in · {fmtTokens(u.completionTokens)} out · {u.requests} req</div>
                   <div className="index-bar"><div className="index-bar-fill" style={{ width: `${Math.max(2, Math.round((total / max) * 100))}%` }} /></div>
+                  <div className="usage-cache-detail"><CacheUsage usage={u} /></div>
                 </div>
               );
             })}
           </div>
         )}
-        <div className="index-actions">
-          <button className="btn-secondary" disabled={!!pending} onClick={() => runAction("refresh")}>
-            <Icon name="reset" /> {pending === "refresh" ? "Refreshing…" : "Refresh"}
-          </button>
-          <button
-            className="btn-secondary danger"
-            disabled={rows.length === 0 || !!pending}
-            onClick={() => runAction("reset")}
-          >
-            <Icon name="trash" /> {pending === "reset" ? "Awaiting reset…" : "Reset Usage"}
-          </button>
-        </div>
-        {notice && <p className="row-desc" role={notice.error ? "alert" : "status"}>{notice.text}</p>}
+        {notice && <p className={"settings-notice" + (notice.error ? " error" : "")} role={notice.error ? "alert" : "status"}>{notice.text}</p>}
       </div>
 
       <Group>
@@ -597,7 +592,6 @@ function IndexingPanel({
     accel === "gpu" ? "GPU" : accel === "cpu" ? "CPU" : accel === "remote" ? "Remote" : "Loading...";
   return (
     <>
-      <h1 className="page-title">Indexing &amp; Docs</h1>
       <div className="section-label">Codebase</div>
       <div className="index-card">
         <div className="index-card-title">Codebase Indexing</div>
@@ -839,6 +833,14 @@ export function App() {
     vscode.postMessage(payload);
   };
 
+  const activePage = NAV.find((item) => item.id === section) ?? NAV[0];
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const navRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => { if (contentRef.current) contentRef.current.scrollTop = 0; }, [section]);
+  React.useEffect(() => {
+    navRef.current?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [section, navQuery]);
+
   const navFiltered = navQuery.trim()
     ? NAV.filter((n) => {
         const q = navQuery.trim().toLowerCase();
@@ -848,43 +850,63 @@ export function App() {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      <aside className="sidebar" aria-label="Settings navigation">
         <div className="brand">
           <img className="brand-badge" src={document.getElementById("root")?.dataset.icon} alt="" />
           <span>
             <span className="brand-name">OpenCursor</span>
-            <span className="brand-sub">Local · Open Source</span>
+            <span className="brand-sub">Agent settings</span>
           </span>
         </div>
-        <input
-          className="nav-search"
-          type="search"
-          placeholder="Search settings"
-          value={navQuery}
-          onChange={(e) => setNavQuery(e.target.value)}
-        />
-        {navFiltered.map((n) => (
-          <React.Fragment key={n.id}>
-            {n.sep && !navQuery && <div className="nav-sep" />}
-            <button className={"nav-item" + (section === n.id ? " active" : "")} onClick={() => setSection(n.id)}>
-              <Icon name={n.icon} />
-              <span>{n.label}</span>
-            </button>
-            {n.id === "general" && !navQuery && (
-              <button className="nav-item" onClick={() => vscode.postMessage({ type: "openVsCodeSettings" })}>
-                <Icon name="code" />
-                <span>VS Code Settings ↗</span>
+        <div className="nav-search-wrap">
+          <Icon name="search" size={14} />
+          <input
+            className="nav-search"
+            type="search"
+            aria-label="Search settings"
+            placeholder="Search settings"
+            value={navQuery}
+            onChange={(e) => setNavQuery(e.target.value)}
+          />
+        </div>
+        <nav className="settings-nav" ref={navRef} aria-label="Settings sections">
+          {navFiltered.map((n, index) => (
+            <React.Fragment key={n.id}>
+              {!navQuery.trim() && (index === 0 || navFiltered[index - 1].group !== n.group) && <div className="nav-group-label">{n.group}</div>}
+              <button
+                className={"nav-item" + (section === n.id ? " active" : "")}
+                aria-current={section === n.id ? "page" : undefined}
+                onClick={() => setSection(n.id)}
+              >
+                <Icon name={n.icon} />
+                <span>{n.label}</span>
               </button>
-            )}
-          </React.Fragment>
-        ))}
+            </React.Fragment>
+          ))}
+          {navFiltered.length === 0 && <div className="nav-empty" role="status">No matching settings.<button className="link-btn" onClick={() => setNavQuery("")}>Clear search</button></div>}
+        </nav>
+        <div className="nav-footer">
+          <button className="nav-item" onClick={() => vscode.postMessage({ type: "openVsCodeSettings" })}>
+            <Icon name="code" /><span>VS Code Settings ↗</span>
+          </button>
+          <span className="nav-local-note"><span /> Local &amp; open source</span>
+        </div>
       </aside>
 
-      <main className="content">
+      <main className="content" aria-labelledby="settings-page-title">
+        <div className="settings-scroll" ref={contentRef}>
         <div className="content-inner">
+          <header className="settings-page-header">
+            <div className="page-breadcrumb">Settings <Icon name="chevR" size={12} /> {activePage.group}</div>
+            <div className="page-heading-row">
+              <div>
+                <h1 className="page-title" id="settings-page-title">{activePage.label}</h1>
+                <p className="page-description">{activePage.description}</p>
+              </div>
+            </div>
+          </header>
           {section === "general" && (
             <>
-              <h1 className="page-title">General</h1>
 
               <Group>
                 <Row title="Providers & API Keys" desc="Manage the AI providers, API keys and OAuth accounts this extension talks to.">
@@ -964,7 +986,6 @@ export function App() {
 
           {section === "agents" && (
             <>
-              <h1 className="page-title">Agents</h1>
 
               <Group>
                 <Row title="Text Size" desc="Adjust the conversation text size.">
@@ -1085,7 +1106,6 @@ export function App() {
 
           {section === "behavior" && (
             <>
-              <h1 className="page-title">Behavior</h1>
               <div className="section-label">Capabilities</div>
               <Group>
                 <Row title="Workspace Context" desc="Include workspace info in the agent's context.">
@@ -1130,7 +1150,6 @@ export function App() {
 
           {section === "advanced" && (
             <>
-              <h1 className="page-title">Advanced</h1>
               <div className="section-label">Custom Instructions</div>
               <Row title="System Prompt" desc="Prepended to the agent's system prompt for every request." stacked>
                 <textarea rows={6} value={s.systemPrompt} onChange={(e) => set("systemPrompt", e.target.value)} />
@@ -1140,7 +1159,6 @@ export function App() {
 
           {section === "about" && (
             <>
-              <h1 className="page-title">About</h1>
               <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "6px 0 18px" }}>
                 <img src={document.getElementById("root")?.dataset.icon} alt="" style={{ width: 48, height: 48, borderRadius: 10 }} />
                 <div>
@@ -1167,11 +1185,12 @@ export function App() {
           )}
 
         </div>
+        </div>
+        <footer className="settings-footer">
+          <span>Save to apply changes to agent capabilities and custom instructions.</span>
+          <button className="btn-save" onClick={save}>Save</button>
+        </footer>
       </main>
-
-      <button className="btn-save" onClick={save}>
-        Save
-      </button>
     </div>
   );
 }

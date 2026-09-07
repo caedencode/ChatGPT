@@ -43,7 +43,6 @@ export function PersonasPanel({
 
   return (
     <>
-      <h1 className="page-title">Personas</h1>
       <div className="section-label">Default Persona</div>
       <p className="panel-hint">New chats use this persona's system prompt. You can override it per chat from the composer.</p>
       <div className="row">

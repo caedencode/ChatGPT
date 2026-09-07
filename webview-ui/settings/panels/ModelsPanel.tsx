@@ -32,8 +32,7 @@ function ModelRow({ model, enabled, onToggle, onRemove, badge }: { model: ModelD
     <div className="model-row">
       <div className="model-name">
         <Icon name="model" />
-        <span>{model.name}</span>
-        {model.id !== model.name && <span className="row-desc" style={{ marginLeft: 6, opacity: 0.6 }}>{model.id}</span>}
+        <span className="model-label"><span>{model.name}</span>{model.id !== model.name && <small>{model.id}</small>}</span>
         {badge && <span className="badge-tag" style={{ marginLeft: 8 }}>{badge}</span>}
       </div>
       {onRemove && (
@@ -93,13 +92,13 @@ function ModelSection({
   const add = () => { if (draft.trim() && onAdd) { onAdd(draft.trim()); setDraft(""); } };
   return (
     <div className="feature-card">
-      <div className="fc-head" style={{ cursor: "pointer" }} onClick={() => setOpen((v) => !v)}>
-        <div className="fc-title-input" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <div className="fc-head">
+        <button className="card-disclosure model-section-title" aria-expanded={expanded} onClick={() => setOpen((v) => !v)}>
           <Icon name={expanded ? "chevD" : "chevR"} size={14} />
-          <span>{spec.title}</span>
+          <span className="model-section-name">{spec.title}</span>
           <span className={"badge-tag " + (spec.connected ? "always" : "")}>{spec.connected ? "connected" : "not connected"}</span>
-          <span className="row-desc" style={{ whiteSpace: "nowrap" }}>{enabledCount}/{spec.models.length} enabled</span>
-        </div>
+          <span className="model-section-count">{enabledCount}/{spec.models.length} enabled</span>
+        </button>
         {spec.onRefresh && (
           <button
             className="icon-btn"
@@ -430,9 +429,8 @@ export function ModelsPanel({
 
   return (
     <>
-      <h1 className="page-title">Models</h1>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div className="model-toolbar">
         <input
           className="model-search"
           type="search"

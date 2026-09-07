@@ -173,6 +173,7 @@ function PopularProviderCard({
 
   return (
     <div className={"provider-row" + (connected && on ? " active" : "")}>
+      <span className="provider-avatar"><Icon name="globe" size={16} /></span>
       <div className="pr-text">
         <div className="pr-name">{label}</div>
         <div className="pr-sub">{connected ? "Connected · key set" : "Add your API key to connect"}</div>
@@ -185,14 +186,13 @@ function PopularProviderCard({
           <Toggle checked={on} onChange={(v) => provider && onToggle(provider.id, v)} />
         </>
       ) : (
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div className="provider-key-actions">
           <input
             type="password"
             value={keyDraft}
             placeholder="Enter API key"
             onChange={(e) => setKeyDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && keyDraft.trim()) { onConnect(kind, keyDraft.trim()); setKeyDraft(""); } }}
-            style={{ width: 200 }}
           />
           <button className="btn-primary" disabled={!keyDraft.trim()} onClick={() => { onConnect(kind, keyDraft.trim()); setKeyDraft(""); }}>
             Connect
@@ -306,15 +306,15 @@ export function OAuthAccountCard({ account, defaultOpen, refreshToken = 0 }: { a
   };
   const enabled = account.disabled !== true;
   return (
-    <div className="feature-card" style={enabled ? undefined : { opacity: 0.55 }}>
-      <div className="fc-head" style={{ cursor: "pointer" }} onClick={toggle}>
-        <div className="fc-title-input" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name={open ? "chevD" : "chevR"} size={14} />
-          <span>{OAUTH_LABEL[account.kind]}</span>
-          {account.email && <span className="row-desc">· {account.email}</span>}
+    <div className={"feature-card oauth-account" + (enabled ? "" : " disabled")}>
+      <div className="fc-head oauth-account-head">
+        <button className="card-disclosure oauth-account-title" aria-expanded={open} onClick={toggle}>
+          <span className="account-avatar"><Icon name="globe" size={16} /></span>
+          <span className="account-identity"><strong>{OAUTH_LABEL[account.kind]}</strong>{account.email && <span>{account.email}</span>}</span>
           {!enabled && <span className="badge-tag">Disabled</span>}
-        </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
+          <Icon name={open ? "chevD" : "chevR"} size={14} />
+        </button>
+        <div className="account-actions">
           {open && (
             <button className="icon-btn" onClick={refresh} title="Refresh limits" disabled={loading || resetting}>
               <Icon name="reset" size={14} />
@@ -328,28 +328,28 @@ export function OAuthAccountCard({ account, defaultOpen, refreshToken = 0 }: { a
       </div>
       {open && (
         <div className="fc-body">
-          {loading && <div className="row-desc" role="status">{limits === null ? "Loading limits…" : "Refreshing limits…"}</div>}
-          {error && <div className="row-desc" role="alert">{error}{limits !== null && " Showing the last available limits."}</div>}
+          {loading && <div className="quota-loading" role="status"><span className="llama-spinner" />{limits === null ? "Loading limits…" : "Refreshing limits…"}</div>}
+          {error && <div className="settings-notice error" role="alert">{error}{limits !== null && " Showing the last available limits."}</div>}
           {limits && limits.length === 0 ? (
             <div className="row-desc">No usage limits available.</div>
           ) : (
             (limits || []).map((l) => {
               const pct = Math.max(0, Math.min(100, Math.round(l.remaining)));
               return (
-                <div key={l.label}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                <div key={l.label} className={"quota-window" + (pct <= 10 ? " low" : "")}>
+                  <div className="quota-window-head">
                     <span className="row-desc">{l.label}</span>
                     <span className="row-desc">
                       {pct}% left{l.resetsAt ? ` · resets ${new Date(l.resetsAt).toLocaleString()}` : ""}
                     </span>
                   </div>
-                  <div className="index-bar"><div className="index-bar-fill" style={{ width: `${pct}%` }} /></div>
+                  <div className="index-bar" role="progressbar" aria-label={`${l.label} remaining quota`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><div className="index-bar-fill" style={{ width: `${pct}%` }} /></div>
                 </div>
               );
             })
           )}
           {account.kind === "codex" && resetCredits !== undefined && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 10, borderTop: "1px solid var(--vscode-panel-border, #333)" }}>
+            <div className="quota-credit-row">
               <span className="row-desc">Reset credits: {resetCredits}{resetMsg ? ` · ${resetMsg}` : ""}</span>
               <button className="btn-ghost" onClick={doReset} disabled={resetting || loading || resetNeedsRefresh || resetCredits <= 0} title="Spend one credit to reset your rate-limit windows now">
                 {resetting ? "Resetting…" : "Reset windows"}
@@ -421,12 +421,11 @@ function OAuthAddMenu({ status }: { status: OAuthStatus }) {
         </button>
       )}
       {open && !pending && (
-        <div className="menu-pop" style={{ position: "absolute", zIndex: 10, marginTop: 4, background: "var(--vscode-menu-background, #252526)", border: "1px solid var(--vscode-menu-border, #454545)", borderRadius: 6, minWidth: 180, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+        <div className="menu-pop">
           {OAUTH_PROVIDERS.map((p) => (
             <button
               key={p.kind}
               className="menu-item"
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", color: "inherit", cursor: "pointer" }}
               onClick={() => { setOpen(false); setStarting(p.kind); vscode.postMessage({ type: "oauthLogin", kind: p.kind }); }}
             >
               {p.label}
@@ -494,7 +493,6 @@ export function ProvidersPanel({
 
   return (
     <>
-      <h1 className="page-title">Providers</h1>
 
       <div className="sub-tabs">
         <button className={"sub-tab" + (tab === "popular" ? " active" : "")} onClick={() => setTab("popular")}>Popular Providers</button>

@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) 2026 Pawan Osman <https://github.com/PawanOsman>
+ *
+ * This file is part of OpenCursor — AI coding agent chat inside VS Code.
+ * https://github.com/PawanOsman/OpenCursor
+ *
+ * Licensed under the MIT License. See LICENSE file in the project root.
+ */
+
+/* Shared foundations. VS Code supplies the palette; both webviews use the
+   same surface, type, focus, and motion vocabulary. No external assets. */
+:root {
+  color-scheme: dark;
+  --oc-bg: var(--vscode-editor-background, #181a1f);
+  --oc-panel: var(--vscode-sideBar-background, #1e2026);
+  --oc-fg: var(--vscode-foreground, #e4e6ed);
+  --oc-muted: var(--vscode-descriptionForeground, #a2a7b4);
+  --oc-subtle: var(--vscode-disabledForeground, #7d8493);
+  --oc-surface: var(--vscode-editorWidget-background, color-mix(in srgb, var(--oc-fg) 3%, var(--oc-bg)));
+  --oc-surface-hover: var(--vscode-list-hoverBackground, color-mix(in srgb, var(--oc-fg) 6%, var(--oc-bg)));
+  --oc-border: color-mix(in srgb, var(--oc-fg) 12%, var(--oc-bg));
+  --oc-border-strong: color-mix(in srgb, var(--oc-fg) 24%, var(--oc-bg));
+  --oc-accent: var(--vscode-textLink-foreground, #8baaff);
+  --oc-accent-soft: color-mix(in srgb, var(--oc-accent) 10%, var(--oc-bg));
+  --oc-primary: var(--vscode-button-background, #3868d9);
+  --oc-primary-fg: var(--vscode-button-foreground, #fff);
+  --oc-focus: var(--vscode-focusBorder, var(--oc-accent));
+  --oc-shadow: 0 12px 36px var(--vscode-widget-shadow, #0003);
+  --oc-font: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  --oc-mono: var(--vscode-editor-font-family, "SFMono-Regular", Consolas, monospace);
+}
+
+body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
+body.vscode-high-contrast, body.vscode-high-contrast-light {
+  --oc-border: var(--vscode-contrastBorder, var(--oc-fg));
+  --oc-border-strong: var(--vscode-contrastActiveBorder, var(--oc-focus));
+}
+body { font-family: var(--oc-font); -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }
+button svg { flex-shrink: 0; }
+::selection { background: var(--vscode-editor-selectionBackground, var(--oc-accent-soft)); }
+
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--oc-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

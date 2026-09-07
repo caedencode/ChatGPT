@@ -175,7 +175,6 @@ export function HooksPanel({ features, setFeatures }: { features: FeatureConfig;
 
   return (
     <>
-      <h1 className="page-title">Hooks</h1>
       <div className="section-label">Lifecycle Hooks</div>
       <p className="panel-hint">Run shell commands on agent lifecycle events. Context is passed via OPENCURSOR_* env vars.</p>
       {features.hooks.map((h, i) => (

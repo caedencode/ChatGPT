@@ -38,9 +38,12 @@ export function History({
 }) {
   const [query, setQuery] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const popupRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    const previousFocus = document.activeElement;
     inputRef.current?.focus();
+    return () => { if (previousFocus instanceof HTMLElement) previousFocus.focus(); };
   }, []);
 
   const filtered = query
@@ -49,14 +52,35 @@ export function History({
 
   return (
     <div className="history-overlay" onClick={onClose}>
-      <div className="history-popup" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="history-popup"
+        ref={popupRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-heading"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { e.preventDefault(); onClose(); }
+          if (e.key !== "Tab") return;
+          const controls = popupRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input");
+          if (!controls?.length) return;
+          const first = controls[0], last = controls[controls.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }}
+      >
+        <div className="history-titlebar">
+          <div className="history-heading"><h2 id="history-heading">Your conversations</h2><span>{list.length} saved chat{list.length === 1 ? "" : "s"}</span></div>
+          <button className="history-close" onClick={onClose} aria-label="Close history"><Icon name="close" size={16} /></button>
+        </div>
         {/* Search */}
         <div className="history-search">
           <Icon name="search" size={14} />
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search previous chats…"
+            placeholder="Search conversations…"
+            aria-label="Search conversations"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             spellCheck={false}
@@ -66,19 +90,19 @@ export function History({
         <div className="history-list">
           {filtered.length === 0 ? (
             <div className="history-empty">
-              {list.length === 0 ? "No conversations yet." : "No results."}
+              <Icon name={list.length === 0 ? "chat" : "search"} size={22} />
+              <span>{list.length === 0 ? "Your conversations will appear here." : "No conversations match your search."}</span>
             </div>
           ) : (
             filtered.map((c) => (
               <div
                 key={c.id}
                 className={"history-item" + (c.id === activeId ? " active" : "")}
-                onClick={() => onSelect(c.id)}
               >
-                <div className="hi-text">
+                <button className="hi-text" aria-current={c.id === activeId ? "page" : undefined} onClick={() => { onSelect(c.id); onClose(); }}>
                   <div className="hi-title">{c.title}</div>
                   <div className="hi-time">{timeAgo(c.updatedAt)}</div>
-                </div>
+                </button>
                 <button
                   className="hi-del"
                   title="Delete conversation"

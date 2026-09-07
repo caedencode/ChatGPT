@@ -96,7 +96,6 @@ export function SubagentsPanel({
 
   return (
     <>
-      <h1 className="page-title" style={{ marginBottom: 4 }}>Subagents &amp; Teams</h1>
       <p className="panel-hint" style={{ marginBottom: 24 }}>Define specialist agents and group them into teams the agent can delegate to</p>
 
       <div className="rss-section-head">
@@ -125,7 +124,7 @@ export function SubagentsPanel({
           <button className="btn-secondary" onClick={() => setSubDraft({ value: { id: uid("sub"), name: "", description: "", prompt: "", readonly: true }, isNew: true })}>New Subagent</button>
         </div>
       ) : (
-        <table className="cfg-table">
+        <div className="cfg-table-scroll"><table className="cfg-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -160,7 +159,7 @@ export function SubagentsPanel({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
 
       <div className="rss-section-head" style={{ marginTop: 28 }}>
@@ -177,7 +176,7 @@ export function SubagentsPanel({
           <button className="btn-secondary" onClick={() => setTeamDraft({ value: { id: uid("team"), name: "", description: "", subagentIds: [] }, isNew: true })}>New Team</button>
         </div>
       ) : (
-        <table className="cfg-table">
+        <div className="cfg-table-scroll"><table className="cfg-table">
           <thead>
             <tr>
               <th className="c-check" title="Assigned to Project mode runs">Use</th>
@@ -224,7 +223,7 @@ export function SubagentsPanel({
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
 
       {subDraft && (

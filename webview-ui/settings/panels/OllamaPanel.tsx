@@ -68,7 +68,6 @@ export function OllamaPanel({
 
   return (
     <>
-      <h1 className="page-title">Ollama</h1>
 
       <div className="section-label">Runtime</div>
       <div className="row">

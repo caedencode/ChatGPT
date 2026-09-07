@@ -23,6 +23,11 @@ function post(msg: OutMessage) {
   vscode.postMessage(msg);
 }
 
+function AppMark({ size = 20 }: { size?: number }) {
+  const src = document.getElementById("root")?.dataset.icon;
+  return src ? <img src={src} alt="" width={size} height={size} /> : <Icon name="code" size={size} />;
+}
+
 // Catches render exceptions so a transient error (e.g. opening/closing a subagent
 // tab) shows a recoverable panel instead of blanking the whole webview.
 export class ErrorBoundary extends React.Component<
@@ -226,7 +231,7 @@ function ExploringSection({
       {timed.map((t) => (
         <ToolTimeoutWatch key={`watch-${t.callId}`} block={t} />
       ))}
-      <div className="explore-head" onClick={toggleOpen}>
+      <button className="explore-head" aria-expanded={open} onClick={toggleOpen}>
         <span className={"tchev" + (open ? " open" : "")}>
           <Icon name="chevD" size={12} />
         </span>
@@ -234,7 +239,7 @@ function ExploringSection({
         <span className="explore-title">{running ? "Exploring" : exploreSummary(tools)}</span>
         {headTimed ? <TimeoutBadge block={headTimed} /> : null}
         {running ? <span className="spinner" /> : <span className="explore-count">{tools.length}</span>}
-      </div>
+      </button>
       {!open && running && <div className="explore-subtitle">{subtitle}</div>}
       {open && (
         <div className="explore-body">
@@ -356,10 +361,10 @@ function CompactionCard({ block }: { block: import("./types").AssistantBlock & {
   }
   return (
     <div className={"compaction-card done" + (open ? " open" : "")}>
-      <div className="compaction-head" onClick={() => setOpen((o) => !o)}>
+      <button className="compaction-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <Icon name={open ? "chevD" : "chevR"} size={12} />
         <span>Earlier conversation summarized to free context</span>
-      </div>
+      </button>
       {open && block.summary && <div className="compaction-body"><Markdown text={block.summary} /></div>}
     </div>
   );
@@ -372,11 +377,11 @@ function ThinkingCard({ block }: { block: ThinkingBlock }) {
   const title = live ? "Thinking" : secs ? `Thought for ${secs}s` : "Thought";
   return (
     <div className={"thinking-card" + (open ? " open" : "") + (live ? " live" : "")}>
-      <div className="thinking-head" onClick={toggleOpen}>
+      <button className="thinking-head" aria-expanded={open} onClick={toggleOpen}>
         <Icon name="brain" size={12} className="thinking-spark" />
         <span className="thinking-title">{title}</span>
         <Icon name={open ? "chevD" : "chevR"} size={12} className="thinking-chev" />
-      </div>
+      </button>
       {open && <div className="thinking-body"><Markdown text={block.text} /></div>}
     </div>
   );
@@ -778,6 +783,7 @@ export function App() {
   const selfScrollRef = React.useRef(false);
   // Detects conversation switches so we can reset to the bottom on switch.
   const prevActiveIdRef = React.useRef<string | undefined>(activeId);
+  const showingWelcomeRef = React.useRef(true);
   // Per-conversation queue of messages typed while a run was in flight. Sent
   // automatically (FIFO) when the current run settles.
   type QueuedMsg = { text: string; attachments?: Attachment[]; model?: string; mode?: Mode };
@@ -895,7 +901,7 @@ export function App() {
       const el = scrollRef.current;
       if (!el) return;
       selfScrollRef.current = true;
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = el.querySelector(".chat-empty, .setup-screen") ? 0 : el.scrollHeight;
       window.setTimeout(() => { selfScrollRef.current = false; }, 60);
     };
     // Two frames: after remount paints and after spacer sizing settles.
@@ -909,6 +915,16 @@ export function App() {
   React.useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Welcome/setup content is read from the top. Do not follow its bottom or
+    // reset the user's scroll position when a model/draft update re-renders it.
+    if (!hasProviders || (turns.length === 0 && !subTab)) {
+      if (!showingWelcomeRef.current || prevActiveIdRef.current !== activeId) el.scrollTop = 0;
+      showingWelcomeRef.current = true;
+      prevActiveIdRef.current = activeId;
+      pinTopRef.current = false;
+      return;
+    }
+    showingWelcomeRef.current = false;
     // Switching conversations: cancel any pending pin and land at the bottom.
     if (prevActiveIdRef.current !== activeId) {
       prevActiveIdRef.current = activeId;
@@ -927,7 +943,7 @@ export function App() {
       let n = 12;
       const snap = () => {
         const c = scrollRef.current;
-        if (!c || !stickRef.current) return;
+        if (!c || !stickRef.current || activeIdRef.current !== activeId || c.querySelector(".chat-empty, .setup-screen")) return;
         selfScrollRef.current = true;
         c.scrollTop = c.scrollHeight;
         selfScrollRef.current = false;
@@ -1426,8 +1442,47 @@ export function App() {
   return (
     <div className={"app" + (uiPrefs.chatTextSize !== "default" ? ` text-${uiPrefs.chatTextSize}` : "")}>
       <div className="chat-header">
+        <div className="chat-topbar">
+          <div className="chat-brand"><span className="brand-mark"><AppMark size={19} /></span><span>OpenCursor</span></div>
+          <div className="actions">
+            <button className="hicon" title="New Chat" onClick={() => post({ type: "newConversation" })}>
+              <Icon name="plus" size={14} />
+            </button>
+            <button className="hicon" title="History" onClick={() => setHistoryOpen(true)}>
+              <Icon name="history" size={14} />
+            </button>
+            <button className="hicon" title="Settings" onClick={() => post({ type: "openSettings" })}>
+              <Icon name="settings" size={14} />
+            </button>
+            <div className="more-menu-wrap" ref={moreRef}>
+              <button className="hicon" title="More" aria-label="More actions" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
+                <Icon name="more" size={14} />
+              </button>
+              {moreOpen && (
+                <div className="more-menu">
+                  <button onClick={() => { setMoreOpen(false); post({ type: "openBrowserTab" }); }}>
+                    <Icon name="globe" size={13} /> Open Browser Tab
+                  </button>
+                  <button
+                    disabled={!activeId}
+                    onClick={() => { setMoreOpen(false); post({ type: "exportConversation", convId: activeId }); }}
+                  >
+                    <Icon name="download" size={13} /> Export Conversation
+                  </button>
+                  <button
+                    disabled={openTabs.length === 0}
+                    onClick={() => { setMoreOpen(false); draftsRef.current.clear(); setOpenTabs([]); post({ type: "newConversation" }); }}
+                  >
+                    <Icon name="close" size={13} /> Close All Tabs
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         <div
           className="tab-bar"
+          aria-label="Open conversations"
           ref={tabBarRef}
           onWheel={(e) => {
             if (e.deltaY === 0) return;
@@ -1442,6 +1497,13 @@ export function App() {
               <div
                 key={tabId || "new"}
                 className={"tab" + (isActive ? " active" : "")}
+                role="button"
+                tabIndex={0}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={title}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.currentTarget.click(); }
+                }}
                 onClick={() => {
                   if (subTab) setSubTab(null);
                   if (tabId === "") {
@@ -1460,15 +1522,17 @@ export function App() {
               >
                 {tabId !== activeId && sessionsRef.current.get(tabId)?.running && <span className="status-spinner tab-spin" />}
                 <span className="tab-title">{title}</span>
-                <span
+                <button
                   className="tab-close"
+                  title={`Close ${title}`}
+                  aria-label={`Close ${title}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     closeTab(tabId);
                   }}
                 >
                   <Icon name="close" size={12} />
-                </span>
+                </button>
               </div>
             );
           })}
@@ -1483,46 +1547,11 @@ export function App() {
             <div className="tab subagent-tab active" title="Subagent">
               <span className="tab-icon"><Icon name="task" size={12} /></span>
               <span className="tab-title">{subBlock.input?.description || "Subagent"}</span>
-              <span className="tab-close" onClick={(e) => { e.stopPropagation(); setSubTab(null); }}>
+              <button className="tab-close" aria-label="Close subagent" onClick={(e) => { e.stopPropagation(); setSubTab(null); }}>
                 <Icon name="close" size={12} />
-              </span>
+              </button>
             </div>
           )}
-        </div>
-        <div className="actions">
-          <button className="hicon" title="New Chat" onClick={() => post({ type: "newConversation" })}>
-            <Icon name="plus" size={14} />
-          </button>
-          <button className="hicon" title="History" onClick={() => setHistoryOpen(true)}>
-            <Icon name="history" size={14} />
-          </button>
-          <button className="hicon" title="Settings" onClick={() => post({ type: "openSettings" })}>
-            <Icon name="settings" size={14} />
-          </button>
-          <div className="more-menu-wrap" ref={moreRef}>
-            <button className="hicon" title="More" onClick={() => setMoreOpen((v) => !v)}>
-              <Icon name="more" size={14} />
-            </button>
-            {moreOpen && (
-              <div className="more-menu">
-                <button onClick={() => { setMoreOpen(false); post({ type: "openBrowserTab" }); }}>
-                  <Icon name="globe" size={13} /> Open Browser Tab
-                </button>
-                <button
-                  disabled={!activeId}
-                  onClick={() => { setMoreOpen(false); post({ type: "exportConversation", convId: activeId }); }}
-                >
-                  <Icon name="download" size={13} /> Export Conversation
-                </button>
-                <button
-                  disabled={openTabs.length === 0}
-                  onClick={() => { setMoreOpen(false); draftsRef.current.clear(); setOpenTabs([]); post({ type: "newConversation" }); }}
-                >
-                  <Icon name="close" size={13} /> Close All Tabs
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -1541,22 +1570,41 @@ export function App() {
           <SubagentChat block={subBlock} approvals={approvalsByCall} />
         ) : !hasProviders ? (
           <div className="setup-screen">
-            <img className="app-logo" src={document.getElementById("root")?.dataset.icon} alt="OpenCursor" />
-            <div className="setup-title">Set up a provider to start</div>
-            <div className="setup-desc">OpenCursor needs an AI provider before you can chat.</div>
-            <ol className="setup-steps">
-              <li>Open <b>Settings → Providers</b>.</li>
-              <li>Add a provider (OpenAI, Anthropic, OpenRouter, Ollama or llama.cpp).</li>
-              <li>Enter its base URL and API key, then set it active.</li>
-            </ol>
+            <span className="welcome-mark"><AppMark size={28} /></span>
+            <span className="welcome-eyebrow">Your workspace, with an agent</span>
+            <h1 className="setup-title">Make room for your next idea.</h1>
+            <p className="setup-desc">Connect a model to explore your code, work through a problem, or build something new.</p>
+            <div className="setup-features">
+              <span><Icon name="fileSearch" size={16} /><span>Understand your codebase</span></span>
+              <span><Icon name="edit" size={16} /><span>Make changes together</span></span>
+              <span><Icon name="check" size={16} /><span>Review every step</span></span>
+            </div>
             <button className="setup-btn" onClick={() => post({ type: "openSettings", section: "providers" })}>
-              <Icon name="settings" size={14} /> Add a provider
+              Connect a provider <Icon name="chevR" size={14} />
             </button>
+            <span className="setup-note">Use an account, an API key, or a local model.</span>
           </div>
         ) : turns.length === 0 ? (
           <div className="chat-empty">
-            <img className="app-logo" src={document.getElementById("root")?.dataset.icon} alt="OpenCursor" />
-            <div className="empty-hint">Ask the agent to build or explain something.</div>
+            <div className="welcome-intro">
+              <span className="welcome-mark"><AppMark size={28} /></span>
+              <span className="welcome-eyebrow">Let's make something</span>
+              <h1 className="welcome-title">What are we building?</h1>
+              <p className="empty-hint">Start with an idea, a question, or a problem in your code.</p>
+            </div>
+            <div className="prompt-starters" aria-label="Start a conversation">
+              {([
+                { icon: "fileSearch", title: "Explore this codebase", detail: "Find your way around the project", prompt: "Explore this codebase and explain its structure, main features, and how to get started." },
+                { icon: "list", title: "Plan a feature", detail: "Turn an idea into a clear next step", prompt: "Help me plan a new feature for this project. First, ask me what I want to build." },
+                { icon: "tools", title: "Find a bug", detail: "Investigate an issue together", prompt: "Help me investigate a bug in this project. Ask me about the issue and expected behavior before making changes." },
+              ] as const).map((starter) => (
+                <button className="prompt-starter" key={starter.title} onClick={() => setDraft({ text: starter.prompt })}>
+                  <span className="starter-icon"><Icon name={starter.icon} size={16} /></span>
+                  <span className="starter-copy"><span className="starter-title">{starter.title}</span><span className="starter-detail">{starter.detail}</span></span>
+                  <Icon name="chevR" size={13} className="starter-arrow" />
+                </button>
+              ))}
+            </div>
             <PersonaSelect
               personas={personas}
               personaId={personaId}
@@ -1647,7 +1695,7 @@ export function App() {
                 ) : (
                   <div className="msg assistant" key={index}>
                     <div className="role">
-                      <Icon name="bot" /> Agent
+                      <span className="agent-avatar"><AppMark size={15} /></span> OpenCursor
                     </div>
                     <div className="bubble">
                       {(() => { const items = groupBlocks((turn as AssistantTurn).blocks); const lastTurn = turn === turns[turns.length - 1]; return items.map((b, bi) =>
@@ -1712,15 +1760,15 @@ export function App() {
         {pendingChanges.length > 0 && (
           <div className="review-bar">
             <div className="review-head">
-              <span className="review-title" onClick={() => setReviewOpen((o) => !o)}>
+              <button className="review-title" aria-expanded={reviewOpen} onClick={() => setReviewOpen((o) => !o)}>
                 <Icon name={reviewOpen ? "chevD" : "chevR"} size={12} className="rv-chev" />
-                {pendingChanges.length} File{pendingChanges.length > 1 ? "s" : ""}
-              </span>
+                {pendingChanges.length} file{pendingChanges.length > 1 ? "s" : ""} changed
+              </button>
               <div className="review-actions">
                 <button className="rv-link" onClick={() => post({ type: "rejectAllChanges" })}>
                   Undo All
                 </button>
-                <button className="rv-link" onClick={() => post({ type: "acceptAllChanges" })}>
+                <button className="rv-link keep" onClick={() => post({ type: "acceptAllChanges" })}>
                   Keep All
                 </button>
                 {/* <button className="rv-review" onClick={() => setReviewOpen((o) => !o)}>
@@ -1734,7 +1782,7 @@ export function App() {
                 const name = c.path.split(/[\\/]/).pop() || c.path;
                 return (
                   <div className="review-item" key={c.path}>
-                    <span className="rv-file" title={c.path} onClick={() => post({ type: "diffChange", path: c.path })}>
+                    <button className="rv-file" title={c.path} onClick={() => post({ type: "diffChange", path: c.path })}>
                       <Icon name="file" size={13} />
                       <span className="rv-name">{name}</span>
                       {!c.existedBefore && <span className="rv-tag">new</span>}
@@ -1742,7 +1790,7 @@ export function App() {
                         {(c.added ?? 0) > 0 && <span className="rv-add">+{c.added}</span>}
                         {(c.removed ?? 0) > 0 && <span className="rv-del">-{c.removed}</span>}
                       </span>
-                    </span>
+                    </button>
                     <span className="rv-item-actions">
                       <button className="rv-icon reject" title="Undo" onClick={() => post({ type: "rejectChange", path: c.path })}>
                         <Icon name="close" size={13} />

@@ -241,7 +241,7 @@ function ContextRing({ used, total }: { used: number; total: number }) {
   const c = 2 * Math.PI * r;
   const label = `${(used / 1000).toFixed(used >= 100_000 ? 0 : 1)}k / ${total >= 1_000_000 ? `${total / 1_000_000}M` : `${Math.round(total / 1000)}k`} context used`;
   return (
-    <span className="ctx-ring" title={label}>
+    <span className="ctx-ring" role="img" aria-label={label} title={label}>
       <svg width="16" height="16" viewBox="0 0 16 16">
         <circle cx="8" cy="8" r={r} fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
         <circle
@@ -254,13 +254,43 @@ function ContextRing({ used, total }: { used: number; total: number }) {
   );
 }
 
-function useOutsideClose(open: boolean, close: () => void) {
+function activateWithKeyboard(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.click();
+  }
+}
+
+function useOutsideClose(open: boolean, close: () => void, triggerRef?: React.RefObject<HTMLElement | null>) {
   React.useEffect(() => {
     if (!open) return;
     const h = () => close();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); triggerRef?.current?.focus(); }
+    };
     document.addEventListener("click", h);
-    return () => document.removeEventListener("click", h);
-  }, [open, close]);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("click", h); document.removeEventListener("keydown", key); };
+  }, [open, close, triggerRef]);
+}
+
+/** Put keyboard users into a portalled picker instead of making them tab
+ * through the rest of the composer before reaching the choices. */
+function usePickerKeyboard(open: boolean, menuRef: React.RefObject<HTMLElement | null>) {
+  const focusOnOpen = React.useRef(false);
+  const focusFirst = () => menuRef.current?.querySelector<HTMLElement>('input, button:not(:disabled), [tabindex="0"]')?.focus();
+  React.useLayoutEffect(() => {
+    if (open && focusOnOpen.current) { focusOnOpen.current = false; focusFirst(); }
+  }, [open]);
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget || !["Enter", " ", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === "ArrowDown" && open) { focusFirst(); return; }
+    focusOnOpen.current = !open;
+    e.currentTarget.click();
+  };
 }
 
 /**
@@ -307,15 +337,20 @@ function useAnchoredMenu(open: boolean, triggerRef: React.RefObject<HTMLElement 
 
 function ModePicker({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) {
   const [open, setOpen] = React.useState(false);
-  useOutsideClose(open, () => setOpen(false));
   const triggerRef = React.useRef<HTMLSpanElement>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  useOutsideClose(open, () => setOpen(false), triggerRef);
+  const pickerKeyDown = usePickerKeyboard(open, menuRef);
   const { style } = useAnchoredMenu(open, triggerRef, menuRef);
   const meta = MODES.find((m) => m.id === mode) || MODES[0];
   return (
     <span
       ref={triggerRef}
       className="pill mode-pill"
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onKeyDown={pickerKeyDown}
       onClick={(e) => {
         e.stopPropagation();
         setOpen((o) => !o);
@@ -330,10 +365,15 @@ function ModePicker({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void })
             <div
               key={o.id}
               className={"mode-item" + (o.id === mode ? " active" : "")}
+              role="button"
+              tabIndex={0}
+              aria-pressed={o.id === mode}
+              onKeyDown={activateWithKeyboard}
               onClick={(e) => {
                 e.stopPropagation();
                 onMode(o.id);
                 setOpen(false);
+                triggerRef.current?.focus();
               }}
             >
               <span className="mi-icon">
@@ -357,9 +397,10 @@ function ModePicker({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void })
 /** Project-mode team selector: pick one or more teams of subagents for the task. */
 function TeamPicker({ teams, selected, onChange }: { teams: TeamInfo[]; selected: string[]; onChange: (ids: string[]) => void }) {
   const [open, setOpen] = React.useState(false);
-  useOutsideClose(open, () => setOpen(false));
   const triggerRef = React.useRef<HTMLSpanElement>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  useOutsideClose(open, () => setOpen(false), triggerRef);
+  const pickerKeyDown = usePickerKeyboard(open, menuRef);
   const { style, maxH } = useAnchoredMenu(open, triggerRef, menuRef, [teams.length]);
   const picked = teams.filter((t) => selected.includes(t.id));
   const label = picked.length === 0 ? "No team" : picked.length === 1 ? picked[0].name : `${picked.length} teams`;
@@ -370,6 +411,10 @@ function TeamPicker({ teams, selected, onChange }: { teams: TeamInfo[]; selected
     <span
       ref={triggerRef}
       className="pill mode-pill"
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onKeyDown={pickerKeyDown}
       title={picked.length ? picked.map((t) => `${t.name}: ${t.members.join(", ")}`).join("\n") : "Select the team(s) that will work on this task"}
       onClick={(e) => {
         e.stopPropagation();
@@ -386,6 +431,10 @@ function TeamPicker({ teams, selected, onChange }: { teams: TeamInfo[]; selected
             <div
               key={t.id}
               className={"mode-item" + (selected.includes(t.id) ? " active" : "")}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected.includes(t.id)}
+              onKeyDown={activateWithKeyboard}
               onClick={(e) => {
                 e.stopPropagation();
                 toggle(t.id);
@@ -446,12 +495,12 @@ function ThinkingControl({ value, values, onChange }: { value: string; values: s
   const adaptive = value === "adaptive";
   return (
     <div className="mo-thinking">
-      <div className="mo-toggle" onClick={() => onChange(on ? "disabled" : onValue)}>
+      <div className="mo-toggle" role="switch" aria-checked={on} tabIndex={0} onKeyDown={activateWithKeyboard} onClick={() => onChange(on ? "disabled" : onValue)}>
         <span className="mo-label">Thinking</span>
         <span className={"mo-switch" + (on ? " on" : "")}><span className="mo-knob" /></span>
       </div>
       {on && canChooseAdaptive && (
-        <div className="mo-toggle sub" onClick={() => onChange(adaptive ? "enabled" : "adaptive")}>
+        <div className="mo-toggle sub" role="switch" aria-checked={adaptive} tabIndex={0} onKeyDown={activateWithKeyboard} onClick={() => onChange(adaptive ? "enabled" : "adaptive")}>
           <span className="mo-label">Adaptive</span>
           <span className={"mo-switch" + (adaptive ? " on" : "")}><span className="mo-knob" /></span>
         </div>
@@ -485,6 +534,10 @@ function ModelOptions({ model, onChange }: { model: ModelDef; onChange: (opts: M
           <div
             key={i}
             className="mo-toggle"
+            role="switch"
+            aria-checked={o.value === "true"}
+            tabIndex={0}
+            onKeyDown={activateWithKeyboard}
             onClick={() => setOpt(i, o.value === "true" ? "false" : "true")}
           >
             <span className="mo-label">{o.label}</span>
@@ -496,7 +549,7 @@ function ModelOptions({ model, onChange }: { model: ModelDef; onChange: (opts: M
           <div key={i} className="mo-group">
             <div className="mo-group-label">{o.label}</div>
             {(o.values || []).map((v) => (
-              <div key={v} className={"mo-item" + (v === o.value ? " active" : "")} onClick={() => setOpt(i, v)}>
+              <div key={v} className={"mo-item" + (v === o.value ? " active" : "")} role="button" aria-pressed={v === o.value} tabIndex={0} onKeyDown={activateWithKeyboard} onClick={() => setOpt(i, v)}>
                 <span>{VALUE_LABELS[v] ?? v}</span>
                 {v === o.value && <Icon name="check" className="mo-check" />}
               </div>
@@ -533,6 +586,10 @@ function ModelRow({
   return (
     <div
       className={"model-item" + (m.id === selected ? " active" : "") + (m.id === editingId ? " editing" : "")}
+      role="button"
+      tabIndex={0}
+      aria-pressed={m.id === selected}
+      onKeyDown={activateWithKeyboard}
       onClick={() => onSelect(m.id)}
     >
       <span className="model-item-name">{m.name}</span>
@@ -587,11 +644,7 @@ function ModelPicker({
   const [open, setOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
-  useOutsideClose(open, () => {
-    setOpen(false);
-    setEditingId(null);
-    setQuery("");
-  });
+
 
   // modelList is already the server-filtered set (enabled + default). Fall back to
   // raw ids only if the extension hasn't sent a modelList yet.
@@ -626,6 +679,12 @@ function ModelPicker({
 
   const triggerRef = React.useRef<HTMLSpanElement>(null);
   const pickerRef = React.useRef<HTMLDivElement>(null);
+  useOutsideClose(open, () => {
+    setOpen(false);
+    setEditingId(null);
+    setQuery("");
+  }, triggerRef);
+  const pickerKeyDown = usePickerKeyboard(open, pickerRef);
   // Anchor the fixed picker to the trigger; flips below when no room above.
   const { style: pickerStyle, maxH } = useAnchoredMenu(open, triggerRef, pickerRef, [list.length, !!editing]);
 
@@ -634,12 +693,18 @@ function ModelPicker({
     setOpen(false);
     setEditingId(null);
     setQuery("");
+    triggerRef.current?.focus();
   };
 
   return (
     <span
       ref={triggerRef}
       className="model-select"
+      role="button"
+      tabIndex={0}
+      aria-label={`Select model: ${selLabel}`}
+      aria-expanded={open}
+      onKeyDown={pickerKeyDown}
       onClick={(e) => {
         e.stopPropagation();
         setOpen((o) => !o);
@@ -671,6 +736,7 @@ function ModelPicker({
                   autoFocus
                   value={query}
                   placeholder="Search models"
+                  aria-label="Search models"
                   onChange={(e) => setQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -703,6 +769,9 @@ function ModelPicker({
                 ))}
                 <div
                   className="model-item add-models"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={activateWithKeyboard}
                   onClick={() => {
                     post({ type: "openSettings", section: "models" });
                     setOpen(false);
@@ -1500,7 +1569,8 @@ export function Composer({
           contentEditable
           role="textbox"
           aria-multiline="true"
-          data-placeholder={isFirst ? "Plan, Build, / for skills, @ for context" : "Add a follow-up"}
+          aria-label={editing ? "Edit message" : "Message the agent"}
+          data-placeholder={isFirst ? "Describe what you want to build…" : "Ask a follow-up or describe the next step…"}
           suppressContentEditableWarning
           onDragOver={(e) => e.preventDefault()}
           onClick={(e) => {
@@ -1663,10 +1733,15 @@ export function Composer({
             e.target.value = "";
           }}
         />
-        <div className="composer-bar">
+        <div className="composer-selection">
           <ModePicker mode={mode} onMode={onMode} />
           {mode === "project" && <TeamPicker teams={teams ?? []} selected={activeTeamIds ?? []} onChange={(ids) => onTeams?.(ids)} />}
           <ModelPicker models={models} modelList={modelList} selected={selectedModel} onSelect={onSelectModel} onSaveOptions={onSaveModelOptions} onResetOptions={onResetModelOptions} />
+        </div>
+        <div className="composer-bar">
+          <button className="context-btn" title="Add files, folders, or other context" onClick={() => insertTextAtCaret("@")}>
+            <AtSign size={14} /><span>Add context</span>
+          </button>
           <div className="right">
             {!editing && (() => {
               const sel = modelList.find((m) => m.id === selectedModel);
@@ -1688,6 +1763,7 @@ export function Composer({
             <button
               className={"send-btn" + (showStop ? " stop" : canSend ? "" : " disabled")}
               title={showStop ? "Stop" : editing ? "Resend" : isRunning ? "Queue message" : "Send"}
+              disabled={!showStop && !canSend && !(queuedCount && !editing)}
               onClick={showStop ? onCancel : submit}
             >
               {showStop ? (
@@ -1699,6 +1775,7 @@ export function Composer({
           </div>
         </div>
       </div>
+      <div className="composer-hint"><span>{submitWithCtrlEnter ? "Ctrl / ⌘ + Enter" : "Enter"} to send</span><span>{submitWithCtrlEnter ? "Enter" : "Shift + Enter"} for a new line</span></div>
     </div>
   );
 }
